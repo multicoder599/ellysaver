@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — MultiPay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    :root {
+      --primary: #2563eb; --primary-dark: #1d4ed8; --primary-light: #3b82f6; --accent: #0ea5e9;
+      --bg: #f8fafc; --bg-elevated: #ffffff; --bg-card: #ffffff; --bg-hover: #f1f5f9;
+      --border: #e2e8f0; --border-strong: #cbd5e1;
+      --text: #0f172a; --text-secondary: #334155; --text-muted: #64748b;
+      --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+      --radius-sm: 6px; --radius: 10px; --radius-lg: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+      --shadow-hover: 0 10px 40px rgba(37,99,235,0.1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; line-height: 1; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+    /* Navbar */
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(255,255,255,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 12px 24px; }
+    .nav-container { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 22px; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .logo span { color: var(--primary); }
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; border: none; outline: none; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(37,99,235,0.04); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.2); }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Layout */
+    .dashboard-layout { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .sidebar { background: var(--bg-elevated); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; top: 57px; left: 0; bottom: 0; width: 240px; overflow-y: auto; }
+    .sidebar-menu { list-style: none; padding: 0 10px; }
+    .sidebar-menu li { margin-bottom: 3px; }
+    .sidebar-menu a { display: flex; align-items: center; gap: 10px; padding: 10px 14px; color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 600; border-radius: var(--radius-sm); transition: all 0.2s; cursor: pointer; border: none; background: none; width: 100%; }
+    .sidebar-menu a:hover, .sidebar-menu a.active { background: var(--bg-hover); color: var(--text); }
+    .sidebar-menu a.active { border-left: 3px solid var(--primary); padding-left: 11px; }
+    .sidebar-menu .material-symbols-outlined { font-size: 20px; }
+    .main-content { margin-left: 240px; padding: 80px 32px 32px; min-height: 100vh; }
+
+    /* Page */
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+    .page-header p { font-size: 14px; color: var(--text-muted); }
+
+    /* Cards */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; transition: all 0.2s; }
+    .card:hover { border-color: var(--border-strong); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .card-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .card-title .material-symbols-outlined { color: var(--primary); font-size: 20px; }
+
+    /* Stats */
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; flex-direction: column; gap: 6px; }
+    .stat-card .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--text); }
+    .stat-card .stat-change { font-size: 12px; color: var(--success); font-weight: 600; }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input { width: 100%; padding: 12px 14px; background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; transition: all 0.2s; outline: none; }
+    .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.08); }
+    .form-input::placeholder { color: #94a3b8; }
+
+    /* Alerts */
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 16px; display: none; }
+    .alert.show { display: flex; }
+    .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--success); }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: var(--primary); }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th { background: var(--bg-hover); padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: middle; }
+    .table tr:last-child td { border-bottom: none; }
+    .table tr:hover td { background: var(--bg-hover); color: var(--text); }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.3px; }
+    .badge-pending { background: #fef3c7; border: 1px solid #fde68a; color: #b45309; }
+    .badge-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--success); }
+    .badge-failed { background: #fef2f2; border: 1px solid #fecaca; color: var(--danger); }
+
+    /* Code block */
+    .code-block { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; color: var(--text-secondary); position: relative; }
+    .code-block .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 11px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
+    .code-block .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* API key box */
+    .api-key-box { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; display: flex; align-items: center; gap: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; word-break: break-all; }
+    .api-key-box .key-text { flex: 1; color: var(--text-secondary); }
+
+    /* Spinner */
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .dashboard-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; padding: 80px 16px 24px; }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="/dashboard" class="logo">
+        <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">payments</span>
+        Multi<span style="color:var(--primary);">Pay</span>
+      </a>
+      <div class="nav-actions">
+        <span id="userName" style="font-size:13px;color:var(--text-muted);font-weight:600;"></span>
+        <button onclick="logout()" class="btn btn-ghost btn-sm">
+          <span class="material-symbols-outlined">logout</span> Log Out
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dashboard-layout">
+    <aside class="sidebar">
+      <ul class="sidebar-menu">
+        <li><a href="#" class="active" onclick="showSection('overview',this); return false;">
+          <span class="material-symbols-outlined">dashboard</span> Overview
+        </a></li>
+        <li><a href="#" onclick="showSection('apikeys',this); return false;">
+          <span class="material-symbols-outlined">key</span> API Keys
+        </a></li>
+        <li><a href="#" onclick="showSection('transactions',this); return false;">
+          <span class="material-symbols-outlined">receipt_long</span> Transactions
+        </a></li>
+        <li><a href="#" onclick="showSection('wallet',this); return false;">
+          <span class="material-symbols-outlined">account_balance_wallet</span> Wallet
+        </a></li>
+        <li><a href="#" onclick="showSection('test',this); return false;">
+          <span class="material-symbols-outlined">science</span> Test API
+        </a></li>
+        <li><a href="/docs" target="_blank">
+          <span class="material-symbols-outlined">menu_book</span> Documentation
+        </a></li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <!-- Overview -->
+      <section id="overview" class="section-content">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p>Welcome back. Here's your account overview.</p>
+        </div>
+        <div class="grid-4">
+          <div class="stat-card">
+            <span class="stat-label">Wallet Balance</span>
+            <span class="stat-value mono" id="walletBalance">KES 0.00</span>
+            <span class="stat-change">Available</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total Transactions</span>
+            <span class="stat-value mono" id="totalTx">0</span>
+            <span class="stat-change">All time</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Successful</span>
+            <span class="stat-value mono" id="successTx">0</span>
+            <span class="stat-change" style="color:var(--success);">Completed</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">API Keys</span>
+            <span class="stat-value mono" id="keyCount">0</span>
+            <span class="stat-change">Active</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-outlined">code</span> Quick Start</div>
+          </div>
+          <p style="font-size:14px;color:var(--text-muted);margin-bottom:16px;">Send your first STK Push in seconds. Copy this cURL command:</p>
+          <div class="code-block" id="quickStartCode">
+            <button class="copy-btn" onclick="copyCode('quickStartCode')">Copy</button>
+            <code style="color:var(--text-secondary);">curl -X POST https://yourdomain.com/api/stkpush \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: &lt;YOUR_API_KEY&gt;" \
+  -d '{"phone":"254712345678","amount":100}'</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- API Keys -->
+      <section id="apikeys" class="section-content" style="display:none;">
+        <div class="page-header">
+          <h1>API Keys</h1>
+          <p>Generate and manage your API keys. Keys are shown only once at creation.</p>
+        </div>
+        <div id="newKeyAlert" class="alert alert-success"></div>
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label class="form-label">Key Name (optional)</label>
+              <input type="text" id="keyName" class="form-input" placeholder="e.g. Production Key">
+            </div>
+            <button onclick="generateKey()" class="btn btn-primary" id="genKeyBtn">
+              <span class="material-symbols-outlined">add</span>
+              <span id="genKeyText">Generate New Key</span>
+            </button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-outlined">vpn_key</span> Your API Keys</div>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="keysTable">
+              <thead><tr><th>Name</th><th>Status</th><th>Usage</th><th>Last Used</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody id="keysBody"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions -->
+      <section id="transactions" class="section-content" style="display:none;">
+        <div class="page-header">
+          <h1>Transactions</h1>
+          <p>History of all STK Push requests and their statuses.</p>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="table" id="txTable">
+              <thead><tr><th>Date</th><th>Phone</th><th>Amount</th><th>Status</th><th>Receipt</th><th>Reference</th></tr></thead>
+              <tbody id="txBody"><tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Loading...</td></tr></tbody>
+            </table>
+          </div>
+          <div style="display:flex;justify-content:center;gap:8px;padding:16px;border-top:1px solid var(--border);">
+            <button onclick="loadTransactions(1)" class="btn btn-ghost btn-sm">First</button>
+            <button onclick="prevPage()" class="btn btn-ghost btn-sm">Prev</button>
+            <span id="pageInfo" style="font-size:13px;color:var(--text-muted);padding:8px 12px;">Page 1</span>
+            <button onclick="nextPage()" class="btn btn-ghost btn-sm">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Wallet -->
+      <section id="wallet" class="section-content" style="display:none;">
+        <div class="page-header">
+          <h1>Wallet</h1>
+          <p>Your collected funds and balance overview.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px;">
+          <div class="stat-card">
+            <span class="stat-label">Current Balance</span>
+            <span class="stat-value mono" id="walletBalance2">KES 0.00</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Currency</span>
+            <span class="stat-value mono">KES</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="material-symbols-outlined">info</span> About Wallet</div>
+          </div>
+          <p style="font-size:14px;color:var(--text-muted);line-height:1.7;">
+            Your wallet balance increases automatically when M-Pesa STK Push payments are confirmed as successful via the Megapay webhook callback. Funds are held in your platform wallet.
+          </p>
+        </div>
+      </section>
+
+      <!-- Test API -->
+      <section id="test" class="section-content" style="display:none;">
+        <div class="page-header">
+          <h1>Test API</h1>
+          <p>Send a test STK Push directly from your dashboard.</p>
+        </div>
+        <div id="testAlert" class="alert"></div>
+        <div class="card" style="max-width:600px;">
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input type="text" id="testPhone" class="form-input" placeholder="254712345678 or 0712345678">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount (KES)</label>
+            <input type="number" id="testAmount" class="form-input" placeholder="100" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Reference (optional)</label>
+            <input type="text" id="testRef" class="form-input" placeholder="Order123" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input type="text" id="testApiKey" class="form-input" placeholder="mp_live_xxxxxxxxxxxxxxxx...">
+            <p style="font-size:11px;color:var(--text-muted);margin-top:4px;">Paste your raw API key here. Keys are only shown once at generation.</p>
+          </div>
+          <button onclick="sendTestPush()" class="btn btn-primary" id="testBtn" style="width:100%;justify-content:center;">
+            <span class="material-symbols-outlined">send</span>
+            <span id="testBtnText">Send STK Push</span>
+          </button>
+        </div>
+        <div id="testResult" style="margin-top:20px;display:none;">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title"><span class="material-symbols-outlined">terminal</span> Response</div>
+            </div>
+            <div class="code-block" id="testResultCode"><code></code></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // ====== AUTH UTILS ======
+    const API_BASE = window.location.origin;
+    function getToken() { return localStorage.getItem('mp_token'); }
+    function getUser() { try { return JSON.parse(localStorage.getItem('mp_user')); } catch { return null; } }
+    function logout() { localStorage.removeItem('mp_token'); localStorage.removeItem('mp_user'); window.location.href = '/login'; }
+    async function apiFetch(url, opts = {}) {
+      const token = getToken();
+      const headers = { 'Content-Type': 'application/json', ...opts.headers };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(url, { ...opts, headers });
+      if (res.status === 401) { logout(); return null; }
+      return res;
+    }
+
+    // Auth guard
+    (function() {
+      if (!getToken()) { window.location.href = '/login'; return; }
+      const user = getUser();
+      const el = document.getElementById('userName');
+      if (el && user) el.textContent = user.name || user.email;
+    })();
+
+    // ====== NAVIGATION ======
+    let currentPage = 1, totalPages = 1, apiKeysList = [];
+    function showSection(id, link) {
+      document.querySelectorAll('.section-content').forEach(s => s.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
+      document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+      if (link) link.classList.add('active');
+    }
+
+    // ====== OVERVIEW ======
+    async function loadOverview() {
+      try {
+        const [txRes, keyRes, walletRes] = await Promise.all([
+          apiFetch('/api/transactions?limit=1000'),
+          apiFetch('/api/keys'),
+          apiFetch('/api/wallet')
+        ]);
+        if (txRes && txRes.ok) {
+          const d = await txRes.json();
+          const txs = d.transactions || [];
+          document.getElementById('totalTx').textContent = txs.length;
+          document.getElementById('successTx').textContent = txs.filter(t => t.status === 'success').length;
+        }
+        if (keyRes && keyRes.ok) {
+          const d = await keyRes.json();
+          document.getElementById('keyCount').textContent = (d.apiKeys || []).filter(k => k.status === 'active').length;
+        }
+        if (walletRes && walletRes.ok) {
+          const d = await walletRes.json();
+          const bal = d.wallet?.balance || 0;
+          const fmt = `KES ${bal.toLocaleString('en-KE', {minimumFractionDigits:2})}`;
+          document.getElementById('walletBalance').textContent = fmt;
+          const w2 = document.getElementById('walletBalance2');
+          if (w2) w2.textContent = fmt;
+        }
+      } catch (e) { console.error('Overview error:', e); }
+    }
+
+    // ====== API KEYS ======
+    async function loadApiKeys() {
+      try {
+        const res = await apiFetch('/api/keys');
+        if (!res || !res.ok) throw new Error('Failed');
+        const d = await res.json();
+        apiKeysList = d.apiKeys || [];
+        renderKeys();
+      } catch (e) {
+        document.getElementById('keysBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Failed to load keys</td></tr>`;
+      }
+    }
+    function renderKeys() {
+      const tbody = document.getElementById('keysBody');
+      if (!apiKeysList.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No API keys yet. Generate one above.</td></tr>`; return; }
+      tbody.innerHTML = apiKeysList.map(k => `
+        <tr>
+          <td style="font-weight:600;">${k.name || 'Unnamed'}</td>
+          <td>${statusBadge(k.status)}</td>
+          <td class="mono">${k.usageCount?.toLocaleString() || 0}</td>
+          <td style="font-size:12px;color:var(--text-muted);">${k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : 'Never'}</td>
+          <td style="font-size:12px;color:var(--text-muted);">${new Date(k.createdAt).toLocaleDateString()}</td>
+          <td>${k.status === 'active' ? `<button onclick="revokeKey('${k._id}')" class="btn btn-danger btn-sm">Revoke</button>` : '<span style="font-size:12px;color:var(--text-muted);">—</span>'}</td>
+        </tr>
+      `).join('');
+    }
+    function statusBadge(status) {
+      const map = { pending: {cls:'badge-pending',label:'Pending'}, success: {cls:'badge-success',label:'Success'}, failed: {cls:'badge-failed',label:'Failed'}, cancelled: {cls:'badge-failed',label:'Cancelled'} };
+      const s = map[status] || {cls:'badge-pending',label:status};
+      return `<span class="badge ${s.cls}">${s.label}</span>`;
+    }
+    async function generateKey() {
+      const btn = document.getElementById('genKeyBtn');
+      const btnText = document.getElementById('genKeyText');
+      const name = document.getElementById('keyName').value.trim();
+      const alertBox = document.getElementById('newKeyAlert');
+      btn.disabled = true; btnText.innerHTML = '<span class="spinner"></span>';
+      try {
+        const res = await apiFetch('/api/keys/generate', { method: 'POST', body: JSON.stringify({ name: name || undefined }) });
+        const d = await res.json();
+        if (d.success && d.apiKey) {
+          alertBox.innerHTML = `<strong>API Key Generated!</strong> Copy it now — it will never be shown again.<br><br><div class="api-key-box" style="margin-top:8px;"><span class="key-text" id="newKeyText">${d.apiKey.key}</span><button onclick="copyToClipboard('newKeyText')" class="btn btn-ghost btn-sm">Copy</button></div>`;
+          alertBox.className = 'alert alert-success show';
+          document.getElementById('keyName').value = '';
+          loadApiKeys(); loadOverview();
+        } else {
+          alertBox.textContent = d.message || 'Failed to generate key';
+          alertBox.className = 'alert alert-error show';
+        }
+      } catch (e) {
+        alertBox.textContent = 'Network error. Try again.';
+        alertBox.className = 'alert alert-error show';
+      }
+      btn.disabled = false;
+      btnText.innerHTML = '<span class="material-symbols-outlined">add</span> Generate New Key';
+    }
+    async function revokeKey(id) {
+      if (!confirm('Are you sure? Revoked keys cannot be reactivated.')) return;
+      try {
+        const res = await apiFetch(`/api/keys/${id}/revoke`, { method: 'PUT' });
+        if (res && res.ok) { loadApiKeys(); loadOverview(); }
+      } catch (e) { console.error('Revoke error:', e); }
+    }
+
+    // ====== TRANSACTIONS ======
+    async function loadTransactions(page) {
+      try {
+        const res = await apiFetch(`/api/transactions?page=${page}&limit=20`);
+        if (!res || !res.ok) throw new Error('Failed');
+        const d = await res.json();
+        renderTransactions(d.transactions || []);
+        currentPage = d.page || 1; totalPages = d.pages || 1;
+        document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+      } catch (e) {
+        document.getElementById('txBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Failed to load transactions</td></tr>`;
+      }
+    }
+    function renderTransactions(txs) {
+      const tbody = document.getElementById('txBody');
+      if (!txs.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No transactions yet.</td></tr>`; return; }
+      tbody.innerHTML = txs.map(t => `
+        <tr>
+          <td style="font-size:12px;color:var(--text-muted);">${new Date(t.createdAt).toLocaleString()}</td>
+          <td class="mono">${t.phone}</td>
+          <td class="mono" style="font-weight:600;color:var(--text);">KES ${t.amount?.toLocaleString()}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td class="mono" style="font-size:12px;">${t.receipt || '—'}</td>
+          <td style="font-size:12px;color:var(--text-muted);">${t.refId || '—'}</td>
+        </tr>
+      `).join('');
+    }
+    function nextPage() { if (currentPage < totalPages) loadTransactions(currentPage + 1); }
+    function prevPage() { if (currentPage > 1) loadTransactions(currentPage - 1); }
+
+    // ====== TEST API ======
+    async function sendTestPush() {
+      const phone = document.getElementById('testPhone').value.trim();
+      const amount = parseFloat(document.getElementById('testAmount').value);
+      const ref = document.getElementById('testRef').value.trim();
+      const apiKey = document.getElementById('testApiKey').value.trim();
+      const btn = document.getElementById('testBtn');
+      const btnText = document.getElementById('testBtnText');
+      const alertBox = document.getElementById('testAlert');
+      const resultBox = document.getElementById('testResult');
+
+      if (!phone) { alertBox.textContent = 'Phone number is required'; alertBox.className = 'alert alert-error show'; return; }
+      if (!amount || amount < 1) { alertBox.textContent = 'Amount must be at least 1 KES'; alertBox.className = 'alert alert-error show'; return; }
+      if (!apiKey) { alertBox.textContent = 'Enter your API key'; alertBox.className = 'alert alert-error show'; return; }
+      if (!apiKey.startsWith('mp_live_')) { alertBox.textContent = 'Invalid API key format'; alertBox.className = 'alert alert-error show'; return; }
+
+      alertBox.className = 'alert';
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="spinner"></span> Sending...';
+
+      try {
+        const res = await fetch('/api/stkpush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+          body: JSON.stringify({ phone, amount, accountReference: ref || undefined })
+        });
+        const data = await res.json();
+        resultBox.style.display = 'block';
+        document.getElementById('testResultCode').querySelector('code').textContent = JSON.stringify(data, null, 2);
+        if (data.success) {
+          alertBox.textContent = data.message || 'STK Push sent successfully!';
+          alertBox.className = 'alert alert-success show';
+          loadTransactions(1); loadOverview();
+        } else {
+          alertBox.textContent = data.message || 'Request failed';
+          alertBox.className = 'alert alert-error show';
+        }
+      } catch (e) {
+        alertBox.textContent = 'Network error. Please try again.';
+        alertBox.className = 'alert alert-error show';
+      }
+      btn.disabled = false;
+      btnText.innerHTML = '<span class="material-symbols-outlined">send</span> Send STK Push';
+    }
+
+    // ====== UTILS ======
+    function copyToClipboard(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+    function copyCode(blockId) {
+      const el = document.getElementById(blockId);
+      const text = el.querySelector('code').innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = el.querySelector('.copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+
+    // Init
+    loadOverview();
+    loadApiKeys();
+    loadTransactions(1);
+  </script>
+</body>
+</html>

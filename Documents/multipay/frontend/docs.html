@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Documentation — MultiPay</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <style>
+    :root {
+      --primary: #2563eb; --primary-dark: #1d4ed8; --primary-light: #3b82f6; --accent: #0ea5e9;
+      --bg: #f8fafc; --bg-elevated: #ffffff; --bg-card: #ffffff; --bg-hover: #f1f5f9;
+      --border: #e2e8f0; --border-strong: #cbd5e1;
+      --text: #0f172a; --text-secondary: #334155; --text-muted: #64748b;
+      --danger: #ef4444; --success: #22c55e; --warning: #f59e0b;
+      --radius-sm: 6px; --radius: 10px; --radius-lg: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; line-height: 1; }
+
+    /* Navbar */
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(255,255,255,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 12px 24px; }
+    .nav-container { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 22px; font-weight: 800; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .logo span { color: var(--primary); }
+    .nav-links { display: flex; align-items: center; gap: 6px; list-style: none; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius-sm); transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+    .nav-links a:hover, .nav-links a.active { color: var(--primary); background: rgba(37,99,235,0.06); }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn { padding: 10px 20px; border-radius: var(--radius-sm); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; border: none; outline: none; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.25); }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); background: rgba(37,99,235,0.04); }
+
+    /* Docs */
+    .page-content { padding-top: 80px; min-height: 100vh; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .docs-hero { background: linear-gradient(180deg, #ffffff 0%, var(--bg) 100%); padding: 60px 0 40px; border-bottom: 1px solid var(--border); }
+    .docs-hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+    .docs-hero p { font-size: 16px; color: var(--text-muted); max-width: 600px; }
+    .docs-section { padding: 40px 0; border-bottom: 1px solid var(--border); }
+    .docs-section h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .docs-section h2 .material-symbols-outlined { color: var(--primary); }
+    .docs-section p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
+    .endpoint-box { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .method-tag { padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+    .method-post { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
+    .method-get { background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+    .endpoint-url { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text); }
+    .code-block { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.7; overflow-x: auto; color: var(--text-secondary); position: relative; }
+    .code-block .copy-btn { position: absolute; top: 8px; right: 8px; padding: 4px 10px; background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-muted); font-size: 11px; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; }
+    .code-block .copy-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table th { background: var(--bg-hover); padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--text-secondary); vertical-align: middle; }
+    .table tr:last-child td { border-bottom: none; }
+    @media (max-width: 768px) { .nav-links { display: none; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="/" class="logo">
+        <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">payments</span>
+        Multi<span style="color:var(--primary);">Pay</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/docs" class="active">Docs</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="/login" class="btn btn-ghost">Log In</a>
+        <a href="/register" class="btn btn-primary">Get Started</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <div class="docs-hero">
+      <div class="container">
+        <h1>API Documentation</h1>
+        <p>Everything you need to integrate M-Pesa STK Push payments into your application.</p>
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- Auth -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">shield</span> Authentication</h2>
+        <p>All API requests (except auth endpoints) require an API key in the <code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;">x-api-key</code> header.</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>x-api-key: mp_live_abc123def456...</code>
+        </div>
+        <p>Generate your API key from the <a href="/dashboard" style="color:var(--primary);">Dashboard</a>. Each key is shown only once at creation — store it securely.</p>
+      </div>
+
+      <!-- Initiate STK Push -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">send</span> Initiate STK Push</h2>
+        <div class="endpoint-box">
+          <span class="method-tag method-post">POST</span>
+          <span class="endpoint-url">/api/stkpush</span>
+        </div>
+        <p>Triggers an M-Pesa STK Push (Lipa na M-Pesa Online) to the customer's phone via Megapay.</p>
+        <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;">Request Body</h3>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>{
+  "phone": "254712345678",
+  "amount": 100,
+  "accountReference": "Order123",
+  "description": "Payment for Order123"
+}</code>
+        </div>
+        <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;">Response</h3>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>{
+  "success": true,
+  "message": "STK Push sent to phone.",
+  "transactionId": "6579a1b2c3d4e5f6a7b8c9d0",
+  "refId": "MP1234567890",
+  "status": "pending",
+  "phone": "254712345678",
+  "amount": 100,
+  "pollUrl": "/api/transactions/6579a1b2c3d4e5f6a7b8c9d0/status"
+}</code>
+        </div>
+      </div>
+
+      <!-- Check Status -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">refresh</span> Check Transaction Status</h2>
+        <div class="endpoint-box">
+          <span class="method-tag method-get">GET</span>
+          <span class="endpoint-url">/api/transactions/:id/status</span>
+        </div>
+        <p>Poll the status of a pending STK Push transaction using the transaction ID.</p>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>curl -X GET https://yourdomain.com/api/transactions/6579a1b2c3d4e5f6a7b8c9d0/status \
+  -H "x-api-key: YOUR_API_KEY"</code>
+        </div>
+      </div>
+
+      <!-- Webhooks -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">webhook</span> Webhooks</h2>
+        <p>When a customer completes or cancels the M-Pesa payment, Megapay sends a callback to <code style="background:var(--bg-hover);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;">/api/webhook/megapay</code>. Our platform processes it and updates your transaction status and wallet balance automatically.</p>
+        <h3 style="font-size:15px;font-weight:700;margin:20px 0 10px;">Webhook Payload (Success)</h3>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>{
+  "ResponseCode": 0,
+  "ResultDesc": "The service request is processed successfully.",
+  "TransactionAmount": 100,
+  "TransactionReceipt": "SGA7X12345",
+  "Msisdn": "254712345678",
+  "reference": "MP1234567890"
+}</code>
+        </div>
+      </div>
+
+      <!-- Error Codes -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">error</span> Error Codes</h2>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Code</th><th>Meaning</th><th>Resolution</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">400</td><td>Bad Request</td><td>Check request body format and required fields</td></tr>
+              <tr><td class="mono">401</td><td>Unauthorized</td><td>Invalid or missing API key in x-api-key header</td></tr>
+              <tr><td class="mono">429</td><td>Rate Limited</td><td>Too many requests. Max 5 STK pushes/min per key</td></tr>
+              <tr><td class="mono">404</td><td>Not Found</td><td>Transaction or resource does not exist</td></tr>
+              <tr><td class="mono">500</td><td>Server Error</td><td>Contact support if this persists</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SDK Example -->
+      <div class="docs-section">
+        <h2><span class="material-symbols-outlined">code</span> Node.js Example</h2>
+        <div class="code-block">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <code>const response = await fetch('https://yourdomain.com/api/stkpush', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'mp_live_your_api_key_here'
+  },
+  body: JSON.stringify({
+    phone: '254712345678',
+    amount: 100,
+    accountReference: 'Order123'
+  })
+});
+
+const data = await response.json();
+console.log(data.refId); // MP1234567890</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copyCode(btn) {
+      const code = btn.parentElement.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+  </script>
+</body>
+</html>
