@@ -16,7 +16,8 @@ const CONFIG = {
   watermarkText: process.env.WATERMARK_TEXT || 'Watermark',
   watermarkFontPath: process.env.WATERMARK_FONT_PATH || '',
   port: parseInt(process.env.PORT) || 3015,
-  pollInterval: parseInt(process.env.POLL_INTERVAL) || 120000, // 2 minutes default
+  // Increased fallback defaults to protect your Telegram account from bans
+  pollInterval: parseInt(process.env.POLL_INTERVAL) || 300000, // Default to 5 minutes if not set
   sourceChannels: process.env.SOURCE_CHANNELS
     ? process.env.SOURCE_CHANNELS.split(',').map((s) => s.trim().replace('@', '').toLowerCase())
     : [],
@@ -44,8 +45,7 @@ async function checkFfmpeg() {
     });
     console.log('✅ FFmpeg detected');
   } catch {
-    console.error('❌ FFmpeg not found. Install it:');
-    console.error('   Ubuntu: sudo apt update && sudo apt install ffmpeg -y');
+    console.error('❌ FFmpeg not found.');
     process.exit(1);
   }
 }
@@ -166,7 +166,7 @@ async function processVideo(client, message) {
   const wmPath = path.join(CONFIG.dirs.temp, `${base}_wm${safeExt}`);
 
   try {
-    console.log('⬇️  Downloading...');
+    console.log('⬇️ Downloading...');
     const buffer = await client.downloadMedia(message.media, {
       progressCallback: (got, total) => {
         if (total) process.stdout.write(`\r   ${((got / total) * 100).toFixed(0)}%`);
@@ -204,9 +204,9 @@ async function loadProcessed() {
   try {
     const data = await fs.readFile(PROCESSED_FILE, 'utf8');
     JSON.parse(data).forEach(id => processedIds.add(id));
-    console.log(`🗂️  Loaded ${processedIds.size} previously processed IDs`);
+    console.log(`🗂️ Loaded ${processedIds.size} previously processed IDs`);
   } catch {
-    console.log('🗂️  No processed history, starting fresh');
+    console.log('🗂️ No processed history, starting fresh');
   }
 }
 
@@ -229,7 +229,8 @@ async function isTargetChannel(chat) {
 async function buildChannelCache(client) {
   console.log('📚 Building channel cache (one-time)...');
   try {
-    const dialogs = await client.getDialogs({ limit: 200 });
+    // Gracefully handle potential flood waits on startup
+    const dialogs = await client.getDialogs({ limit: 100 });
     cachedChannels = [];
 
     for (const dialog of dialogs) {
@@ -254,23 +255,23 @@ async function buildChannelCache(client) {
 
     console.log(`✅ Cached ${cachedChannels.length} source channel(s)`);
   } catch (err) {
-    console.error('⚠️  Channel cache failed:', err.message);
+    console.error('⚠️ Channel cache failed:', err.message);
     cachedChannels = [];
   }
 }
 
 async function pollChannels(client) {
-  if (cachedChannels.length === 0) {
-    console.log('[POLL] No cached channels, skipping...');
-    return;
-  }
+  if (cachedChannels.length === 0) return;
 
   const now = Date.now() / 1000;
 
   for (const chat of cachedChannels) {
     try {
-      const messages = await client.getMessages(chat, { limit: 5 });
-      await sleep(800); // ⏱️ Delay between channels to avoid flood
+      // Limit to 2 messages for fallback check instead of 5 to minimize overhead
+      const messages = await client.getMessages(chat, { limit: 2 });
+      
+      // Increased safety buffer to 2500ms between distinct channel history requests
+      await sleep(2500); 
 
       for (const msg of messages) {
         if (processedIds.has(msg.id)) continue;
@@ -286,14 +287,19 @@ async function pollChannels(client) {
         }
 
         const chatName = chat.title || chat.username || 'Unknown';
-        console.log(`[POLL] New video #${msg.id} in ${chatName}`);
+        console.log(`[POLL] Found missed video #${msg.id} in ${chatName}`);
         processedIds.add(msg.id);
         await saveProcessed();
         queue.push({ message: msg });
         runQueue(client);
       }
     } catch (err) {
-      // Silently skip channels we can't read
+      // If we encounter a flood wait during polling, back off gracefully
+      if (err.message?.includes('FLOOD_WAIT')) {
+        const waitTime = parseInt(err.message.match(/\d+/)?.[0] || '30');
+        console.warn(`[POLL] Rate limited. Pausing fallback loop for ${waitTime}s...`);
+        await sleep(waitTime * 1000);
+      }
     }
   }
 }
@@ -304,16 +310,8 @@ async function pollChannels(client) {
   await checkFfmpeg();
   await loadProcessed();
 
-  if (!CONFIG.apiId || !CONFIG.apiHash) {
-    console.error('❌ API_ID and API_HASH required');
-    process.exit(1);
-  }
-  if (!CONFIG.sessionString) {
-    console.error('❌ SESSION_STRING missing');
-    process.exit(1);
-  }
-  if (!CONFIG.targetChannel) {
-    console.error('❌ TARGET_CHANNEL missing');
+  if (!CONFIG.apiId || !CONFIG.apiHash || !CONFIG.sessionString || !CONFIG.targetChannel) {
+    console.error('❌ Critical environment variables missing');
     process.exit(1);
   }
 
@@ -327,19 +325,17 @@ async function pollChannels(client) {
   await client.start({ phoneNumber: async () => {} });
   console.log('🔐 Userbot connected');
 
-  // One-time channel cache
   await buildChannelCache(client);
 
   console.log(`🎯 Target: ${CONFIG.targetChannel}`);
   console.log(`📝 Watermark: "${CONFIG.watermarkText}"`);
   console.log(`📋 Sources: ${CONFIG.sourceChannels.length ? CONFIG.sourceChannels.join(', ') : 'ALL channels/groups'}`);
-  console.log('📡 Listening...\n');
+  console.log('📡 Listening for real-time events...\n');
 
   /* ---- EVENT HANDLER (primary detection) ---- */
   client.addEventHandler(async (event) => {
     const msg = event.message;
-    if (!msg) return;
-    if (msg.out) return;
+    if (!msg || msg.out) return;
 
     const isVideo = !!msg.video || (msg.document && msg.document?.mimeType?.startsWith('video/'));
     if (!isVideo) return;
@@ -360,31 +356,32 @@ async function pollChannels(client) {
     runQueue(client);
   }, new NewMessage({}));
 
-  /* ---- POLLING (slow fallback, every 2 min) ---- */
-  console.log(`⏰ Polling fallback every ${CONFIG.pollInterval / 1000}s...`);
+  /* ---- POLLING (Slow safety net fallback) ---- */
+  console.log(`⏰ Polling fallback active every ${CONFIG.pollInterval / 1000}s...`);
+  
+  // Removed the immediate run on startup to let the initial event handlers set up smoothly
   setInterval(() => pollChannels(client), CONFIG.pollInterval);
-  pollChannels(client); // Run once at start
-
-  /* ---- ADMIN SERVER ---- */
-  const server = http.createServer((req, res) => {
-    if (req.url === '/status') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'Online',
-        queueSize: queue.length,
-        isProcessing: busy,
-        processedCount: processedIds.size,
-        sources: CONFIG.sourceChannels.length > 0 ? CONFIG.sourceChannels : 'ALL'
-      }, null, 2));
-    } else {
-      res.writeHead(404);
-      res.end('Not Found');
-    }
-  });
-
-  server.listen(CONFIG.port, () => {
-    console.log(`🌐 Admin: curl http://localhost:${CONFIG.port}/status`);
-  }).on('error', (err) => {
-    console.error(`⚠️  Admin server failed on port ${CONFIG.port}: ${err.message}`);
-  });
 })();
+
+/* ---- ADMIN SERVER ---- */
+const server = http.createServer((req, res) => {
+  if (req.url === '/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'Online',
+      queueSize: queue.length,
+      isProcessing: busy,
+      processedCount: processedIds.size,
+      sources: CONFIG.sourceChannels.length > 0 ? CONFIG.sourceChannels : 'ALL'
+    }, null, 2));
+  } else {
+    res.writeHead(404);
+    res.end('Not Found');
+  }
+});
+
+server.listen(CONFIG.port, () => {
+  console.log(`🌐 Admin: curl http://localhost:${CONFIG.port}/status`);
+}).on('error', (err) => {
+  console.error(`⚠️ Admin server failed on port ${CONFIG.port}: ${err.message}`);
+});
