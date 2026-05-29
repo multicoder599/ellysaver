@@ -15,6 +15,8 @@ const CONFIG = {
   targetChannel: process.env.TARGET_CHANNEL,
   watermarkText: process.env.WATERMARK_TEXT || 'Watermark',
   watermarkFontPath: process.env.WATERMARK_FONT_PATH || '',
+  port: parseInt(process.env.PORT) || 3015,
+  pollInterval: parseInt(process.env.POLL_INTERVAL) || 120000, // 2 minutes default
   sourceChannels: process.env.SOURCE_CHANNELS
     ? process.env.SOURCE_CHANNELS.split(',').map((s) => s.trim().replace('@', '').toLowerCase())
     : [],
@@ -25,6 +27,8 @@ const CONFIG = {
 };
 
 /* ==================== UTILS ==================== */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function ensureDirs() {
   for (const dir of Object.values(CONFIG.dirs)) {
     await fs.mkdir(dir, { recursive: true });
@@ -194,6 +198,7 @@ async function processVideo(client, message) {
 /* ==================== POLLING ==================== */
 const processedIds = new Set();
 const PROCESSED_FILE = path.join(__dirname, 'processed.json');
+let cachedChannels = [];
 
 async function loadProcessed() {
   try {
@@ -210,9 +215,7 @@ async function saveProcessed() {
 }
 
 function getTargetId() {
-  // Normalize target channel for comparison
-  const t = CONFIG.targetChannel.toLowerCase().replace('@', '');
-  return t;
+  return CONFIG.targetChannel.toLowerCase().replace('@', '');
 }
 
 async function isTargetChannel(chat) {
@@ -223,24 +226,22 @@ async function isTargetChannel(chat) {
   return uname === target || cid === target || shortId === target;
 }
 
-async function pollChannels(client) {
+async function buildChannelCache(client) {
+  console.log('📚 Building channel cache (one-time)...');
   try {
     const dialogs = await client.getDialogs({ limit: 200 });
-    const now = Date.now() / 1000;
+    cachedChannels = [];
 
     for (const dialog of dialogs) {
       if (!dialog.isChannel && !dialog.isGroup) continue;
 
       const chat = dialog.entity;
-
-      // 🛑 SKIP TARGET CHANNEL — don't process our own output
       if (await isTargetChannel(chat)) continue;
 
       const uname = (chat.username || '').toLowerCase();
       const cid = chat.id?.toString() || '';
       const shortId = cid.replace(/^-100/, '');
 
-      // Source filter
       if (CONFIG.sourceChannels.length > 0) {
         const match = CONFIG.sourceChannels.some(
           (s) => uname === s || cid === s || shortId === s
@@ -248,11 +249,33 @@ async function pollChannels(client) {
         if (!match) continue;
       }
 
+      cachedChannels.push(chat);
+    }
+
+    console.log(`✅ Cached ${cachedChannels.length} source channel(s)`);
+  } catch (err) {
+    console.error('⚠️  Channel cache failed:', err.message);
+    cachedChannels = [];
+  }
+}
+
+async function pollChannels(client) {
+  if (cachedChannels.length === 0) {
+    console.log('[POLL] No cached channels, skipping...');
+    return;
+  }
+
+  const now = Date.now() / 1000;
+
+  for (const chat of cachedChannels) {
+    try {
       const messages = await client.getMessages(chat, { limit: 5 });
+      await sleep(800); // ⏱️ Delay between channels to avoid flood
+
       for (const msg of messages) {
         if (processedIds.has(msg.id)) continue;
         if (now - msg.date > 300) {
-          processedIds.add(msg.id); // Mark old as processed so we skip next time
+          processedIds.add(msg.id);
           continue;
         }
 
@@ -262,15 +285,16 @@ async function pollChannels(client) {
           continue;
         }
 
-        console.log(`[POLL] New video #${msg.id} in ${chat.title || uname}`);
+        const chatName = chat.title || chat.username || 'Unknown';
+        console.log(`[POLL] New video #${msg.id} in ${chatName}`);
         processedIds.add(msg.id);
-        await saveProcessed(); // Persist immediately
+        await saveProcessed();
         queue.push({ message: msg });
         runQueue(client);
       }
+    } catch (err) {
+      // Silently skip channels we can't read
     }
-  } catch (err) {
-    console.error('[POLL ERROR]', err.message);
   }
 }
 
@@ -302,14 +326,16 @@ async function pollChannels(client) {
 
   await client.start({ phoneNumber: async () => {} });
   console.log('🔐 Userbot connected');
-  await client.getDialogs({});
+
+  // One-time channel cache
+  await buildChannelCache(client);
 
   console.log(`🎯 Target: ${CONFIG.targetChannel}`);
   console.log(`📝 Watermark: "${CONFIG.watermarkText}"`);
   console.log(`📋 Sources: ${CONFIG.sourceChannels.length ? CONFIG.sourceChannels.join(', ') : 'ALL channels/groups'}`);
   console.log('📡 Listening...\n');
 
-  /* ---- EVENT HANDLER ---- */
+  /* ---- EVENT HANDLER (primary detection) ---- */
   client.addEventHandler(async (event) => {
     const msg = event.message;
     if (!msg) return;
@@ -322,7 +348,6 @@ async function pollChannels(client) {
     if (peerType !== 'PeerChannel' && peerType !== 'PeerChat') return;
     if (processedIds.has(msg.id)) return;
 
-    // 🛑 SKIP TARGET CHANNEL
     try {
       const chat = await client.getEntity(msg.peerId);
       if (await isTargetChannel(chat)) return;
@@ -335,13 +360,12 @@ async function pollChannels(client) {
     runQueue(client);
   }, new NewMessage({}));
 
-  /* ---- POLLING ---- */
-  console.log('⏰ Polling every 30s...');
-  setInterval(() => pollChannels(client), 30000);
-  pollChannels(client);
+  /* ---- POLLING (slow fallback, every 2 min) ---- */
+  console.log(`⏰ Polling fallback every ${CONFIG.pollInterval / 1000}s...`);
+  setInterval(() => pollChannels(client), CONFIG.pollInterval);
+  pollChannels(client); // Run once at start
 
   /* ---- ADMIN SERVER ---- */
-  const PORT = 3015;
   const server = http.createServer((req, res) => {
     if (req.url === '/status') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -357,7 +381,10 @@ async function pollChannels(client) {
       res.end('Not Found');
     }
   });
-  server.listen(PORT, () => {
-    console.log(`🌐 Admin: curl http://localhost:${PORT}/status`);
+
+  server.listen(CONFIG.port, () => {
+    console.log(`🌐 Admin: curl http://localhost:${CONFIG.port}/status`);
+  }).on('error', (err) => {
+    console.error(`⚠️  Admin server failed on port ${CONFIG.port}: ${err.message}`);
   });
 })();
